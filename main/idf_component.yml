@@ -1,0 +1,8 @@
+## IDF Component Manager Manifest File
+dependencies:
+  espressif/esp_lcd_panel_io_additions: "^1.0.1"
+  espressif/cmake_utilities: "^0.5.2"
+  espressif/esp_lcd_st7701: "*"
+  idf:
+    version: ">=4.1.0"
+  lvgl/lvgl: "*"
