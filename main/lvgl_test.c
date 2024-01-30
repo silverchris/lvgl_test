@@ -72,6 +72,9 @@ static uint8_t *buf2;
 static esp_lcd_panel_io_handle_t io_handle;
 static esp_lcd_panel_handle_t panel_handle;
 static SemaphoreHandle_t lvgl_mux = NULL;
+//static lv_disp_draw_buf_t disp_buf;
+//static lv_disp_drv_t disp_drv;
+
 
 
 bool lvgl_lock(int timeout_ms) {
@@ -86,9 +89,10 @@ void lvgl_unlock() {
     xSemaphoreGiveRecursive(lvgl_mux);
 }
 
+//static void flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map){
 static void flush_cb(lv_disp_t *drv, const lv_area_t *area, uint8_t *color_map) {
     ESP_LOGI(TAG, "flush_cb");
-    lv_draw_sw_rgb565_swap(color_map, 480*480);
+//    lv_draw_sw_rgb565_swap(color_map, 480*480);
     esp_lcd_panel_draw_bitmap(panel_handle,
                               area->x1,
                               area->y1,
@@ -102,12 +106,19 @@ static void tick(void *arg) {
     lv_tick_inc(2);
 }
 
+#define EXAMPLE_LVGL_TASK_MAX_DELAY_MS 500
+#define EXAMPLE_LVGL_TASK_MIN_DELAY_MS 1
 void task(void *arg) {
-    uint32_t delay;
+    uint32_t delay = EXAMPLE_LVGL_TASK_MAX_DELAY_MS;
     while (true) {
 //        lvgl_lock(-1);
         delay = lv_timer_handler();
 //        lvgl_unlock();
+        if (delay > EXAMPLE_LVGL_TASK_MAX_DELAY_MS) {
+            delay = EXAMPLE_LVGL_TASK_MAX_DELAY_MS;
+        } else if (delay < EXAMPLE_LVGL_TASK_MIN_DELAY_MS) {
+            delay = EXAMPLE_LVGL_TASK_MIN_DELAY_MS;
+        }
         vTaskDelay(delay / portTICK_PERIOD_MS);
     }
 }
@@ -223,9 +234,9 @@ void app_main(void) {
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_st7701(io_handle, &panel_config, &panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
-//    panel_st7701_get_frame_buffer(panel_handle, 2, (void **) &buf1, (void **) &buf2);
+    panel_st7701_get_frame_buffer(panel_handle, 2, (void **) &buf1, (void **) &buf2);
 
-    uint8_t *buf3 = malloc(480*20*2);
+//    uint8_t *buf3 = malloc(480*20*2);
 
 //    memset(buf1, 255, 480 * 480 * 2);
 //    esp_lcd_panel_draw_bitmap(panel_handle,0,0,480,480,buf1);
@@ -247,15 +258,25 @@ void app_main(void) {
 
     xTaskCreate(task, "LVGL", 10000, NULL, 2, &lvgl_task);
 
+//    lv_disp_draw_buf_init(&disp_buf, buf1, buf2, 480*480*2);
+//    lv_disp_drv_init(&disp_drv);
+//    disp_drv.hor_res = 480;
+//    disp_drv.ver_res = 480;
+//    disp_drv.flush_cb = flush_cb;
+//    disp_drv.draw_buf = &disp_buf;
+//    disp_drv.full_refresh = 1;
+//    disp_drv.direct_mode = 1;
+//    lv_disp_drv_register(&disp_drv);
+
     disp = lv_display_create(480, 480);
     lv_display_set_flush_cb(disp, flush_cb);
-    lv_display_set_buffers(disp, buf3, NULL, 480 * 20 * 2, LV_DISPLAY_RENDER_MODE_PARTIAL);
+    lv_display_set_buffers(disp, buf1, buf2, 480 * 480 * 2, LV_DISPLAY_RENDER_MODE_DIRECT);
 
     ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, 2 * 1000));
 //    lvgl_lock(-1);
 
 
-    lv_obj_t *obj = lv_obj_create(lv_screen_active());
+    lv_obj_t *obj = lv_obj_create(lv_scr_act());
     lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_size(obj, LV_PCT(75),LV_PCT(75));
     lv_obj_center(obj);
@@ -275,7 +296,6 @@ void app_main(void) {
     lv_obj_center(label);
     lv_label_set_text(label, "It works?");
 //    lvgl_unlock();
-    lv_display_flush_ready(disp);
     while(true){
         //SPPPIIIIN
         vTaskDelay(100/portTICK_PERIOD_MS);
