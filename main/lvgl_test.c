@@ -92,7 +92,7 @@ void lvgl_unlock() {
 //static void flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map){
 static void flush_cb(lv_disp_t *drv, const lv_area_t *area, uint8_t *color_map) {
     ESP_LOGI(TAG, "flush_cb");
-//    lv_draw_sw_rgb565_swap(color_map, 480*480);
+    lv_draw_sw_rgb565_swap(color_map, 480*480);
     esp_lcd_panel_draw_bitmap(panel_handle,
                               area->x1,
                               area->y1,
@@ -111,9 +111,9 @@ static void tick(void *arg) {
 void task(void *arg) {
     uint32_t delay = EXAMPLE_LVGL_TASK_MAX_DELAY_MS;
     while (true) {
-//        lvgl_lock(-1);
+        lvgl_lock(-1);
         delay = lv_timer_handler();
-//        lvgl_unlock();
+        lvgl_unlock();
         if (delay > EXAMPLE_LVGL_TASK_MAX_DELAY_MS) {
             delay = EXAMPLE_LVGL_TASK_MAX_DELAY_MS;
         } else if (delay < EXAMPLE_LVGL_TASK_MIN_DELAY_MS) {
@@ -236,14 +236,13 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
     panel_st7701_get_frame_buffer(panel_handle, 2, (void **) &buf1, (void **) &buf2);
 
-//    uint8_t *buf3 = malloc(480*20*2);
-
-//    memset(buf1, 255, 480 * 480 * 2);
-//    esp_lcd_panel_draw_bitmap(panel_handle,0,0,480,480,buf1);
-
     lvgl_mux = xSemaphoreCreateRecursiveMutex();
 
     lv_init();
+    disp = lv_display_create(480, 480);
+    lv_display_set_flush_cb(disp, flush_cb);
+    lv_display_set_buffers(disp, buf1, buf2, 480 * 480 * 2, LV_DISPLAY_RENDER_MODE_DIRECT);
+//    lv_display_set_buffers(disp, buf3, buf4, 480 * 100 * 2, LV_DISPLAY_RENDER_MODE_PARTIAL);
 
     const esp_timer_create_args_t lvgl_tick_timer_args = {
             .callback = &tick,
@@ -254,50 +253,27 @@ void app_main(void) {
     };
     lvgl_tick_timer = NULL;
     ESP_ERROR_CHECK(esp_timer_create(&lvgl_tick_timer_args, &lvgl_tick_timer));
-
-
-    xTaskCreate(task, "LVGL", 10000, NULL, 2, &lvgl_task);
-
-//    lv_disp_draw_buf_init(&disp_buf, buf1, buf2, 480*480*2);
-//    lv_disp_drv_init(&disp_drv);
-//    disp_drv.hor_res = 480;
-//    disp_drv.ver_res = 480;
-//    disp_drv.flush_cb = flush_cb;
-//    disp_drv.draw_buf = &disp_buf;
-//    disp_drv.full_refresh = 1;
-//    disp_drv.direct_mode = 1;
-//    lv_disp_drv_register(&disp_drv);
-
-    disp = lv_display_create(480, 480);
-    lv_display_set_flush_cb(disp, flush_cb);
-    lv_display_set_buffers(disp, buf1, buf2, 480 * 480 * 2, LV_DISPLAY_RENDER_MODE_DIRECT);
-
     ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, 2 * 1000));
-//    lvgl_lock(-1);
 
 
-    lv_obj_t *obj = lv_obj_create(lv_scr_act());
-    lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_size(obj, LV_PCT(75),LV_PCT(75));
-    lv_obj_center(obj);
+
+    xTaskCreate(task, "LVGL", 20000, NULL, 2, &lvgl_task);
 
 
-    /*lv_file_explorer obj style*/
-    lv_obj_set_style_radius(obj, 0, 0);
-    lv_obj_set_style_bg_color(obj, lv_color_hex(0xf2f1f6), 0);
 
-    /*main container style*/
-    lv_obj_set_style_radius(obj, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_clip_corner(obj, true, 0);
-    lv_obj_set_style_pad_bottom(obj, 50, LV_PART_MAIN);
-    lv_obj_set_style_pad_top(obj, 50, LV_PART_MAIN);
-    lv_obj_set_style_border_side(obj, LV_BORDER_SIDE_NONE, LV_PART_MAIN);
-    lv_obj_t *label = lv_label_create(obj);
-    lv_obj_center(label);
+    lvgl_lock(-1);
+
+
+
+    lv_obj_t *label = lv_label_create(lv_scr_act());
+    lv_obj_set_pos(label, 240, 240);
     lv_label_set_text(label, "It works?");
-//    lvgl_unlock();
+    lvgl_unlock();
     while(true){
-        //SPPPIIIIN
-        vTaskDelay(100/portTICK_PERIOD_MS);
+        ESP_LOGI(TAG, "LOOPING %lli", esp_timer_get_time());
+        vTaskDelay(1000/portTICK_PERIOD_MS);
+//        lvgl_lock(-1);
+//        lv_label_set_text_fmt(label, "Time %lli", esp_timer_get_time());
+//        lvgl_unlock();
     }
 }
