@@ -261,14 +261,12 @@ void app_main(void) {
 
 
 
-    lvgl_lock(-1);
-
-
-
-    lv_obj_t *label = lv_label_create(lv_scr_act());
-    lv_obj_set_pos(label, 240, 240);
-    lv_label_set_text(label, "It works?");
-    lvgl_unlock();
+    ESP_LOGI(TAG, "0\n");
+    lvgl_lock(-1);     ESP_LOGI(TAG, "1\n");
+    lv_obj_t *label = lv_label_create(lv_scr_act());      ESP_LOGI(TAG, "2\n");
+    lv_obj_set_pos(label, 240, 240);     ESP_LOGI(TAG, "3\n");
+    lv_label_set_text(label, "It works?");     ESP_LOGI(TAG, "4\n");
+    lvgl_unlock();     ESP_LOGI(TAG, "5\n");
     while(true){
         ESP_LOGI(TAG, "LOOPING %lli", esp_timer_get_time());
         vTaskDelay(1000/portTICK_PERIOD_MS);
